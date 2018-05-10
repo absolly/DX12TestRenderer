@@ -66,6 +66,21 @@ int frameIndex; //current rtv
 
 int rtvDescriptorSize; //size of the rtv descriptor on the device (all front and back buffers will be the same size)
 
+// drawing objects stuff //
+ID3D12PipelineState* pipelineStateObject; //pso containing a pipeline state (in this case the vertex data for 1 object)
+
+ID3D12RootSignature* rootSignature; //root signature defines data shaders will access
+
+D3D12_VIEWPORT viewport; //area that the rasterizer will be streched to.
+
+D3D12_RECT scissorRect; //the area of the window that can be drawn in. pixels outside the area will not be drawn
+
+ID3D12Resource* vertexBuffer; //a default buffer in gpu memory that we will load the vertex data into
+
+D3D12_VERTEX_BUFFER_VIEW vertexBufferView; //a structure containing a pointer to the vertex data in gpu memory (to be used by the driver), 
+										   //the total size of the buffer, and the size of each element
+
+
 /// functions
 
 //create the window
