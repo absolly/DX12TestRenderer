@@ -15,6 +15,8 @@
 // this will only call release if an object exists (prevents exceptions calling release on non existant objects)
 #define SAFE_RELEASE(p) { if ( (p) ) { (p)->Release(); (p) = 0; } }
 
+using namespace DirectX; // we will be using the directxmath library
+
 // Handle to the window
 HWND hwnd = NULL;
 // name of the window
@@ -80,6 +82,25 @@ ID3D12Resource* vertexBuffer; //a default buffer in gpu memory that we will load
 D3D12_VERTEX_BUFFER_VIEW vertexBufferView; //a structure containing a pointer to the vertex data in gpu memory (to be used by the driver), 
 										   //the total size of the buffer, and the size of each element
 
+ID3D12Resource* indexBuffer; //a default buffer in gpu memory that we will load index data into
+
+D3D12_INDEX_BUFFER_VIEW indexBufferView; //a stucture holding info about the index buffer
+
+ID3D12Resource* depthStencilBuffer; //the memory for out depth buffer, will also be used for the stencil buffer later on
+
+ID3D12DescriptorHeap* dsDescriptorHeap; //this is a heap fo the depth/stencil descriptor
+
+struct ConstantBuffer {
+	XMFLOAT4 colorMultiplier;
+};
+
+ID3D12DescriptorHeap* mainDescriptorHeap[frameBufferCount]; //this heap will store teh descriptor to our constant buffer
+
+ID3D12Resource* constantBufferUploadHeap[frameBufferCount]; //this is the memory where the constant buffer will be placed
+
+ConstantBuffer cbColorMultiplierData;
+
+UINT8* cbColorMultiplierGPUAddress[frameBufferCount]; // pointers to the memory locations we get when we map the constant buffers
 
 /// functions
 
@@ -87,7 +108,7 @@ D3D12_VERTEX_BUFFER_VIEW vertexBufferView; //a structure containing a pointer to
 bool InitializeWindow(HINSTANCE hInstance, int ShowWnd, bool fullscreen);
 
 //main application loop
-void MainLoop();
+void mainloop();
 
 //Callback function for windows messages (e.g. window close)
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
