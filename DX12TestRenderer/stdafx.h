@@ -11,6 +11,8 @@
 #include <DirectXMath.h>
 #include "d3dx12.h"
 #include <string>
+#include <wincodec.h>
+#include <iostream>
 
 // this will only call release if an object exists (prevents exceptions calling release on non existant objects)
 #define SAFE_RELEASE(p) { if ( (p) ) { (p)->Release(); (p) = 0; } }
@@ -120,6 +122,14 @@ XMFLOAT4 cube2PositionOffset; //second cube will rotate around the first cube. t
 
 int numCubeIndices; //the number of indices to draw the cube
 
+ID3D12Resource* textureBuffer; //the resource heap containing our texture
+
+ID3D12DescriptorHeap* mainDescriptorHeap;
+
+ID3D12Resource* textureBufferUploadHeap;
+
+BYTE* imageData;
+
 /// functions
 
 //create the window
@@ -149,6 +159,17 @@ void Cleanup();
 //wait until gpu is finished with the command list
 void WaitForPreviousFrame();
 
+//load and decode image from file
+int LoadImageDataFromFile(BYTE** imageData, D3D12_RESOURCE_DESC& resourceDescription, LPCWSTR filename, int &bytesPerRow);
+
+//get DXGI format from the WIC format GUID
+DXGI_FORMAT GetDXGIFormatFromWICFormat(WICPixelFormatGUID& wicFormatGUID);
+
+//converted format for dxgi unknown format
+WICPixelFormatGUID GetConvertToWICFormat(WICPixelFormatGUID& wicFormatGUID);
+
+//get the bit depth
+int GetDXGIFormatBitsPerPixel(DXGI_FORMAT& dxgiFormat);
 
 template <class C>
 std::size_t countof(C const & c)
