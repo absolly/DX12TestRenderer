@@ -10,14 +10,14 @@ struct VS_OUTPUT{
 
 cbuffer ConstantBuffer : register(b0)
 {
-	float4 colorMultiplier;
+	float4x4 wvpMat;
 }
 
 VS_OUTPUT main(VS_INPUT i)
 {
     // just pass vertex position straight through
 	VS_OUTPUT o;
-	o.position = float4(i.pos,1);
-	o.color = i.color * colorMultiplier;
+	o.position = mul(float4(i.pos,1.0f),wvpMat);
+	o.color = i.color;
 	return o;
 }

@@ -90,17 +90,35 @@ ID3D12Resource* depthStencilBuffer; //the memory for out depth buffer, will also
 
 ID3D12DescriptorHeap* dsDescriptorHeap; //this is a heap fo the depth/stencil descriptor
 
-struct ConstantBuffer {
-	XMFLOAT4 colorMultiplier;
+struct ConstantBufferPerObject {
+	XMFLOAT4X4 wvpMat;
 };
 
-ID3D12DescriptorHeap* mainDescriptorHeap[frameBufferCount]; //this heap will store teh descriptor to our constant buffer
+//constant buffers must be 256 byte aligned
+int ConstantBufferPerObjectAlignedSize = (sizeof(ConstantBufferPerObject) + 255) & ~255;
 
-ID3D12Resource* constantBufferUploadHeap[frameBufferCount]; //this is the memory where the constant buffer will be placed
+ConstantBufferPerObject cbPerObject;
 
-ConstantBuffer cbColorMultiplierData;
+ID3D12Resource* constantBufferUploadHeaps[frameBufferCount]; //this is the memory where the constant buffer will be placed
 
-UINT8* cbColorMultiplierGPUAddress[frameBufferCount]; // pointers to the memory locations we get when we map the constant buffers
+UINT8* cbvGPUAddress[frameBufferCount]; // pointers to the memory locations we get when we map the constant buffers
+
+XMFLOAT4X4 cameraProjMat; //store the projection matrix
+XMFLOAT4X4 cameraViewMat; //store the view matrix
+
+XMFLOAT4 cameraPosition; //store the camera position vector
+XMFLOAT4 cameraTarget; //camera look at point
+XMFLOAT4 cameraUp; //world up vector
+
+XMFLOAT4X4 cube1WorldMat; //first cubes world matrix
+XMFLOAT4X4 cube1RotMat; //keep track of the first cubes rotation
+XMFLOAT4 cube1Position; //first cubes position
+
+XMFLOAT4X4 cube2WorldMat; //second cubes world matrix
+XMFLOAT4X4 cube2RotMat; //keep track of the second cubes rotation
+XMFLOAT4 cube2PositionOffset; //second cube will rotate around the first cube. this is the position offset from the first cube
+
+int numCubeIndices; //the number of indices to draw the cube
 
 /// functions
 
