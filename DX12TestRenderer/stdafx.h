@@ -114,12 +114,16 @@ D3D12_VERTEX_BUFFER_VIEW vertexBufferView; //a structure containing a pointer to
 
 ID3D12Resource* indexBuffer; //a default buffer in gpu memory that we will load index data into
 
+D3D12_INDEX_BUFFER_VIEW indexBufferView; //a stucture holding info about the index buffer
+
+ID3D12Resource* vertexBuffer2; //a default buffer in gpu memory that we will load the vertex data into
+
 D3D12_VERTEX_BUFFER_VIEW vertexBufferView2; //a structure containing a pointer to the vertex data in gpu memory (to be used by the driver), 
 										   //the total size of the buffer, and the size of each element
 
 ID3D12Resource* indexBuffer2; //a default buffer in gpu memory that we will load index data into
 
-D3D12_INDEX_BUFFER_VIEW indexBufferView; //a stucture holding info about the index buffer
+D3D12_INDEX_BUFFER_VIEW indexBufferView2; //a stucture holding info about the index buffer
 
 ID3D12Resource* depthStencilBuffer; //the memory for out depth buffer, will also be used for the stencil buffer later on
 
