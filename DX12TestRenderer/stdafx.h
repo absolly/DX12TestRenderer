@@ -16,6 +16,34 @@
 
 // this will only call release if an object exists (prevents exceptions calling release on non existant objects)
 #define SAFE_RELEASE(p) { if ( (p) ) { (p)->Release(); (p) = 0; } }
+#ifndef ThrowIfFailed
+#define ThrowIfFailed(x)                                              \
+{                                                                     \
+    HRESULT hr__ = (x);                                               \
+    std::wstring wfn = AnsiToWString(__FILE__);                       \
+    if(FAILED(hr__)) { throw DxException(hr__, L#x, wfn, __LINE__); } \
+}
+#endif
+
+inline std::wstring AnsiToWString(const std::string& str)
+{
+	WCHAR buffer[512];
+	MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, buffer, 512);
+	return std::wstring(buffer);
+}
+class DxException
+{
+public:
+	DxException() = default;
+	DxException(HRESULT hr, const std::wstring& functionName, const std::wstring& filename, int lineNumber);
+
+	std::wstring ToString()const;
+
+	HRESULT ErrorCode = S_OK;
+	std::wstring FunctionName;
+	std::wstring Filename;
+	int LineNumber = -1;
+};
 
 using namespace DirectX; // we will be using the directxmath library
 
@@ -85,6 +113,11 @@ D3D12_VERTEX_BUFFER_VIEW vertexBufferView; //a structure containing a pointer to
 										   //the total size of the buffer, and the size of each element
 
 ID3D12Resource* indexBuffer; //a default buffer in gpu memory that we will load index data into
+
+D3D12_VERTEX_BUFFER_VIEW vertexBufferView2; //a structure containing a pointer to the vertex data in gpu memory (to be used by the driver), 
+										   //the total size of the buffer, and the size of each element
+
+ID3D12Resource* indexBuffer2; //a default buffer in gpu memory that we will load index data into
 
 D3D12_INDEX_BUFFER_VIEW indexBufferView; //a stucture holding info about the index buffer
 
@@ -170,6 +203,23 @@ WICPixelFormatGUID GetConvertToWICFormat(WICPixelFormatGUID& wicFormatGUID);
 
 //get the bit depth
 int GetDXGIFormatBitsPerPixel(DXGI_FORMAT& dxgiFormat);
+
+//upload data to constant buffer
+static ID3D12Resource* CreateDefaultBuffer(
+	ID3D12Device* device,
+	ID3D12GraphicsCommandList* cmdList,
+	const void* initData,
+	UINT64 byteSize,
+	ID3D12Resource*& uploadBuffer
+);
+static ID3D12Resource* CreateTextureDefaultBuffer(
+	ID3D12Device* device,
+	ID3D12GraphicsCommandList* cmdList,
+	const void* initData,
+	int bytesPerRow,
+	D3D12_RESOURCE_DESC& textureDesc,
+	ID3D12Resource*& uploadBuffer
+);
 
 template <class C>
 std::size_t countof(C const & c)
