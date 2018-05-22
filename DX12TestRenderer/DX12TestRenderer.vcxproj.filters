@@ -51,9 +51,15 @@
     <Image Include="divescooter_diffuse.png">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="MantaRay_Base.png">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <Resource Include="dive_scooter.obj">
+      <Filter>Resource Files</Filter>
+    </Resource>
+    <Resource Include="MantaRay.obj">
       <Filter>Resource Files</Filter>
     </Resource>
   </ItemGroup>

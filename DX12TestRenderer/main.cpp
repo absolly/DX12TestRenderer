@@ -452,7 +452,7 @@ bool InitD3D() {
 	if (FAILED(hr))
 		return false;
 
-	//load the mesh data
+	// Load the mesh data //
 	Mesh* mesh = Mesh::load("dive_scooter.obj");
 	std::vector<Vertex> vList;
 	XMFLOAT3 vertex;
@@ -488,6 +488,43 @@ bool InitD3D() {
 
 	//transition index buffer data from copy to index buffer state
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(indexBuffer, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
+
+	// Load the mesh data 2 //
+	Mesh* mesh2 = Mesh::load("MantaRay.obj");
+	std::vector<Vertex> vList2;
+	XMFLOAT3 vertex2;
+	XMFLOAT2 uv2;
+	for (int i = 0; i < mesh2->_vertices.size(); i++)
+	{
+		vertex2 = mesh2->_vertices[i];
+		uv2 = mesh2->_uvs[i];
+		vList2.push_back(Vertex(vertex2.x, vertex2.y, vertex2.z, uv2.x, 1 - uv2.y));
+	}
+
+	int vBufferSize2 = vList2.size() * sizeof(Vertex);
+	ID3D12Resource* vBufferUploadHeap2;
+
+	//create the default buffer for the vertex data and upload the data using an upload buffer.
+	vertexBuffer2 = CreateDefaultBuffer(device, commandList, &vList2[0], vBufferSize2, vBufferUploadHeap2);
+
+	////transition the vertex buffer data from copy destination state to vertex buffer state
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(vertexBuffer2, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
+
+	//create index buffer
+	std::vector <DWORD> iList2;
+	for (int i = 0; i < mesh2->_indices.size(); i++) {
+		iList2.push_back(mesh2->_indices[i]);
+	}
+
+	int iBufferSize2 = sizeof(DWORD) * iList2.size();
+
+	numCubeIndices2 = iList2.size(); //the number of indeces we want to draw (size of the (iList)/(size of one float3) i think)
+
+	ID3D12Resource* iBufferUploadHeap2;
+	indexBuffer2 = CreateDefaultBuffer(device, commandList, &iList2[0], iBufferSize2, iBufferUploadHeap2);
+
+	//transition index buffer data from copy to index buffer state
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(indexBuffer2, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
 
 	//create a depth stencil descriptor heap so we can get a pointer to the depth stencil buffer
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
@@ -596,6 +633,43 @@ bool InitD3D() {
 	srvDesc.Texture2D.MipLevels = 1;
 	device->CreateShaderResourceView(textureBuffer, &srvDesc, mainDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
+
+	///////////
+	//create the descriptor heap that will store our shader resource view
+	D3D12_DESCRIPTOR_HEAP_DESC heapDesc2 = {};
+	heapDesc2.NumDescriptors = 1;
+	heapDesc2.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	heapDesc2.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	hr = device->CreateDescriptorHeap(&heapDesc2, IID_PPV_ARGS(&secondaryDescriptorHeap));
+	if (FAILED(hr))
+		Running = false;
+
+	//load the image from file
+	D3D12_RESOURCE_DESC textureDesc2;
+	int imageBytesPerRow2;
+	int imageSize2 = LoadImageDataFromFile(&imageData2, textureDesc2, L"MantaRay_Base.png", imageBytesPerRow2);
+
+	//make sure we have data
+	if (imageSize2 <= 0) {
+		Running = false;
+		return false;
+	}
+
+	textureBuffer2 = CreateTextureDefaultBuffer(device, commandList, &imageData2[0], imageBytesPerRow2, textureDesc2, textureBufferUploadHeap2);
+
+	//transition the texture default heap to a pixel shader resource
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(textureBuffer2, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+
+	//now we create a shader resource view descriptor (points to the texture and describes it)
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc2 = {};
+	srvDesc2.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc2.Format = textureDesc.Format;
+	srvDesc2.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc2.Texture2D.MipLevels = 1;
+	device->CreateShaderResourceView(textureBuffer2, &srvDesc2, secondaryDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+	///////////
+
 	//new we execute the command list and upload the initial assets (triangle data)
 	commandList->Close();
 	ID3D12CommandList* ppCommandLists[] = { commandList };
@@ -621,6 +695,16 @@ bool InitD3D() {
 	indexBufferView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
 	indexBufferView.Format = DXGI_FORMAT_R32_UINT;
 	indexBufferView.SizeInBytes = iBufferSize;
+
+	//create a vertex buffer view for the triangle. we get the gpu memory address to the vertex pointer using the GetGPUVirtualAddress() method
+	vertexBufferView2.BufferLocation = vertexBuffer2->GetGPUVirtualAddress();
+	vertexBufferView2.StrideInBytes = sizeof(Vertex);
+	vertexBufferView2.SizeInBytes = vBufferSize2;
+
+	//create a index buffer view for the triangle. gets the gpu memory address to the pointer.
+	indexBufferView2.BufferLocation = indexBuffer2->GetGPUVirtualAddress();
+	indexBufferView2.Format = DXGI_FORMAT_R32_UINT;
+	indexBufferView2.SizeInBytes = iBufferSize2;
 
 	//setup viewport and scene objects //
 	{
@@ -721,7 +805,7 @@ void Update() {
 	XMMATRIX translationOffsetMat = XMMatrixTranslationFromVector(XMLoadFloat4(&cube2PositionOffset));
 
 	// we want cube 2 to be half the size of cube 1, so we scale it by .5 in all dimensions
-	XMMATRIX scaleMat = XMMatrixScaling(0.5f, 0.5f, 0.5f);
+	XMMATRIX scaleMat = XMMatrixScaling(0.05f, 0.05f, 0.05f);
 
 	// reuse worldMat. 
 	// first we scale cube2. scaling happens relative to point 0,0,0, so you will almost always want to scale first
@@ -772,9 +856,6 @@ void UpdatePipeline() {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(dsDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
 	//set the render target for the output merger stage
-	commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
-
-	//set the render target for the output merger stage
 	commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
 	//Clear the render target to the specified clear color
@@ -784,23 +865,23 @@ void UpdatePipeline() {
 
 	//set the root signature
 	commandList->SetGraphicsRootSignature(rootSignature); 
-
+	
+	//draw!
+	commandList->RSSetViewports(1, &viewport);
+	commandList->RSSetScissorRects(1, &scissorRect);
+	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	
+	//first cube
 	//set the descriptor heap
 	ID3D12DescriptorHeap* descriptorHeaps[] = { mainDescriptorHeap };
 	commandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
 	//set the descriptor table to the descriptor heap (parameter 1, as constant buffer root descriptor is parameter index 0)
 	commandList->SetGraphicsRootDescriptorTable(1, mainDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-	
-	//draw!
-	commandList->RSSetViewports(1, &viewport);
-	commandList->RSSetScissorRects(1, &scissorRect);
-	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
 	commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
 	commandList->IASetIndexBuffer(&indexBufferView);
-	
-	//first cube
-	
+
 	//set cube1's constant buffer
 	commandList->SetGraphicsRootConstantBufferView(0, constantBufferUploadHeaps[frameIndex]->GetGPUVirtualAddress());
 
@@ -808,6 +889,15 @@ void UpdatePipeline() {
 	commandList->DrawIndexedInstanced(numCubeIndices, 1, 0, 0, 0);
 
 	//second cube
+	//set the descriptor heap
+	ID3D12DescriptorHeap* descriptorHeaps2[] = { secondaryDescriptorHeap };
+	commandList->SetDescriptorHeaps(_countof(descriptorHeaps2), descriptorHeaps2);
+
+	//set the descriptor table to the descriptor heap (parameter 1, as constant buffer root descriptor is parameter index 0)
+	commandList->SetGraphicsRootDescriptorTable(1, secondaryDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+
+	commandList->IASetVertexBuffers(0, 1, &vertexBufferView2);
+	commandList->IASetIndexBuffer(&indexBufferView2);
 
 	//set cube2's constant buffer. we add the size of the ConstantBufferPerObject (256 bits) to the constatn buffer address.
 	//this is because cube2's constant buffer data is stored after the first one(256 bits from the start of the heap)

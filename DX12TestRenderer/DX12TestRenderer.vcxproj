@@ -170,11 +170,18 @@
     <Image Include="absolly.png" />
     <Image Include="divescooter_diffuse.png" />
     <Image Include="dive_scooter_Base1k.png" />
+    <Image Include="MantaRay_Base.png" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="dive_scooter.obj">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <FileType>Document</FileType>
+    </Resource>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="MantaRay.obj">
+      <FileType>Document</FileType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </Resource>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -158,14 +158,22 @@ XMFLOAT4X4 cube2RotMat; //keep track of the second cubes rotation
 XMFLOAT4 cube2PositionOffset; //second cube will rotate around the first cube. this is the position offset from the first cube
 
 int numCubeIndices; //the number of indices to draw the cube
+int numCubeIndices2; //the number of indices to draw the cube
 
 ID3D12Resource* textureBuffer; //the resource heap containing our texture
+ID3D12Resource* textureBuffer2; //the resource heap containing our texture
+
 
 ID3D12DescriptorHeap* mainDescriptorHeap;
 
+ID3D12DescriptorHeap* secondaryDescriptorHeap;
+
 ID3D12Resource* textureBufferUploadHeap;
 
+ID3D12Resource* textureBufferUploadHeap2;
+
 BYTE* imageData;
+BYTE* imageData2;
 
 /// functions
 
