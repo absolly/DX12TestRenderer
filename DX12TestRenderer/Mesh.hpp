@@ -1,10 +1,31 @@
 #ifndef MESH_H
 #define MESH_H
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers.
+#endif
+
 #include <vector>
 #include <DirectXMath.h>
+#include <windows.h>
+#include "d3dx12.h"
+#include <d3d12.h>
+#include <dxgi1_4.h>
+#include <D3Dcompiler.h>
+
 using namespace DirectX; // we will be using the directxmath library
 
+struct Vertex
+{
+	Vertex(XMFLOAT3 pPos, XMFLOAT2 pTexCoord, XMFLOAT3 pNormal, XMFLOAT3 pTangent, XMFLOAT3 pBitangent) 
+		     : pos(pPos), texCoord(pTexCoord), normal(pNormal), tangent(pTangent), bitangent(pBitangent) {}
+
+	XMFLOAT3 pos;
+	XMFLOAT2 texCoord;
+	XMFLOAT3 normal;
+	XMFLOAT3 tangent;
+	XMFLOAT3 bitangent;
+};
 
 class GameObject;
 class World;
@@ -44,17 +65,14 @@ class Mesh
         void drawDebugInfo(const XMFLOAT4X4& pModelMatrix, const XMFLOAT4X4& pViewMatrix, const XMFLOAT4X4& pProjectionMatrix);
 
 		std::vector<XMFLOAT3>* getVerticies();
-		std::vector<unsigned>* getVertextIndices();
+		std::vector<DWORD>* getVertextIndices();
 
 		//the actual data
-		std::vector<XMFLOAT3> _vertices;       //vec3 with 3d coords for all vertices
-		std::vector<XMFLOAT3> _normals;        //vec3 with 3d normal data
-		std::vector<XMFLOAT3> _tangents;        //vec3 with 3d tangent data
-		std::vector<XMFLOAT3> _bitangents;      //vec3 with 3d bitangent data
-		std::vector<XMFLOAT2> _uvs;            //vec2 for uv
+		std::vector<XMFLOAT3> _vertices;	//vec3 with 3d coords for all vertices
+		std::vector<Vertex> _vertexData;	//full vertex data
 
 		//references to the vertices/normals & uvs in previous vectors
-		std::vector<unsigned> _indices;
+		std::vector<DWORD> _indices;
 
 	protected:
 
@@ -71,6 +89,8 @@ class Mesh
 		unsigned int _uvattr;
 		unsigned int _normalattr;
 		unsigned int _verticesattrb;
+
+		ID3D12Resource* vertexBuffer;
 
 
         //buffer vertices, normals, and uv's

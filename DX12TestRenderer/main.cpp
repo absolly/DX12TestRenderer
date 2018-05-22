@@ -1,12 +1,6 @@
 #include "stdafx.h"
 #include "Mesh.hpp"
 #include <vector>
-struct Vertex
-{
-	Vertex(float x, float y, float z, float u, float v) : pos(x,y,z), texCoord(u, v){}
-	XMFLOAT3 pos;
-	XMFLOAT2 texCoord;
-};
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR, int nShowCmd) {
 
@@ -453,78 +447,79 @@ bool InitD3D() {
 		return false;
 
 	// Load the mesh data //
-	Mesh* mesh = Mesh::load("dive_scooter.obj");
-	std::vector<Vertex> vList;
-	XMFLOAT3 vertex;
-	XMFLOAT2 uv;
-	for (int i = 0; i < mesh->_vertices.size(); i++)
 	{
-		vertex = mesh->_vertices[i];
-		uv = mesh->_uvs[i];
-		vList.push_back(Vertex(vertex.x, vertex.y, vertex.z, uv.x,1- uv.y));
+		Mesh* mesh = Mesh::load("dive_scooter.obj");
+		std::vector<Vertex> vList = mesh->_vertexData;
+
+		int vBufferSize = vList.size() * sizeof(Vertex);
+		ID3D12Resource* vBufferUploadHeap;
+
+		//create the default buffer for the vertex data and upload the data using an upload buffer.
+		vertexBuffer = CreateDefaultBuffer(device, commandList, &vList[0], vBufferSize, vBufferUploadHeap);
+
+		////transition the vertex buffer data from copy destination state to vertex buffer state
+		commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(vertexBuffer, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
+
+		//create index buffer
+		std::vector <DWORD> iList = mesh->_indices;
+
+		int iBufferSize = sizeof(DWORD) * iList.size();
+
+		numCubeIndices = iList.size(); //the number of indeces we want to draw (size of the (iList)/(size of one float3) i think)
+
+		ID3D12Resource* iBufferUploadHeap;
+		indexBuffer = CreateDefaultBuffer(device, commandList, &iList[0], iBufferSize, iBufferUploadHeap);
+
+		//transition index buffer data from copy to index buffer state
+		commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(indexBuffer, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
+
+		//create a vertex buffer view for the triangle. we get the gpu memory address to the vertex pointer using the GetGPUVirtualAddress() method
+		vertexBufferView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
+		vertexBufferView.StrideInBytes = sizeof(Vertex);
+		vertexBufferView.SizeInBytes = vBufferSize;
+
+		//create a index buffer view for the triangle. gets the gpu memory address to the pointer.
+		indexBufferView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
+		indexBufferView.Format = DXGI_FORMAT_R32_UINT;
+		indexBufferView.SizeInBytes = iBufferSize;
 	}
-
-	int vBufferSize = vList.size() * sizeof(Vertex);
-	ID3D12Resource* vBufferUploadHeap;
-
-	//create the default buffer for the vertex data and upload the data using an upload buffer.
-	vertexBuffer = CreateDefaultBuffer(device, commandList, &vList[0], vBufferSize, vBufferUploadHeap);
-
-	////transition the vertex buffer data from copy destination state to vertex buffer state
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(vertexBuffer, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
-
-	//create index buffer
-	std::vector <DWORD> iList;
-	for (int i = 0; i < mesh->_indices.size(); i++) {
-		iList.push_back(mesh->_indices[i]);
-	}
-
-	int iBufferSize = sizeof(DWORD) * iList.size();
-
-	numCubeIndices = iList.size(); //the number of indeces we want to draw (size of the (iList)/(size of one float3) i think)
-
-	ID3D12Resource* iBufferUploadHeap;
-	indexBuffer = CreateDefaultBuffer(device, commandList, &iList[0], iBufferSize, iBufferUploadHeap);
-
-	//transition index buffer data from copy to index buffer state
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(indexBuffer, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
-
 	// Load the mesh data 2 //
-	Mesh* mesh2 = Mesh::load("MantaRay.obj");
-	std::vector<Vertex> vList2;
-	XMFLOAT3 vertex2;
-	XMFLOAT2 uv2;
-	for (int i = 0; i < mesh2->_vertices.size(); i++)
 	{
-		vertex2 = mesh2->_vertices[i];
-		uv2 = mesh2->_uvs[i];
-		vList2.push_back(Vertex(vertex2.x, vertex2.y, vertex2.z, uv2.x, 1 - uv2.y));
+		Mesh* mesh2 = Mesh::load("MantaRay.obj");
+		std::vector<Vertex> vList2 = mesh2->_vertexData;
+
+		int vBufferSize2 = vList2.size() * sizeof(Vertex);
+		ID3D12Resource* vBufferUploadHeap2;
+
+		//create the default buffer for the vertex data and upload the data using an upload buffer.
+		vertexBuffer2 = CreateDefaultBuffer(device, commandList, &vList2[0], vBufferSize2, vBufferUploadHeap2);
+
+		////transition the vertex buffer data from copy destination state to vertex buffer state
+		commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(vertexBuffer2, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
+
+		//create index buffer
+		std::vector <DWORD> iList2 = mesh2->_indices;
+
+		int iBufferSize2 = sizeof(DWORD) * iList2.size();
+
+		numCubeIndices2 = iList2.size(); //the number of indeces we want to draw (size of the (iList)/(size of one float3) i think)
+
+		ID3D12Resource* iBufferUploadHeap2;
+		indexBuffer2 = CreateDefaultBuffer(device, commandList, &iList2[0], iBufferSize2, iBufferUploadHeap2);
+
+		//transition index buffer data from copy to index buffer state
+		commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(indexBuffer2, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
+
+		//create a vertex buffer view for the triangle. we get the gpu memory address to the vertex pointer using the GetGPUVirtualAddress() method
+		vertexBufferView2.BufferLocation = vertexBuffer2->GetGPUVirtualAddress();
+		vertexBufferView2.StrideInBytes = sizeof(Vertex);
+		vertexBufferView2.SizeInBytes = vBufferSize2;
+
+		//create a index buffer view for the triangle. gets the gpu memory address to the pointer.
+		indexBufferView2.BufferLocation = indexBuffer2->GetGPUVirtualAddress();
+		indexBufferView2.Format = DXGI_FORMAT_R32_UINT;
+		indexBufferView2.SizeInBytes = iBufferSize2;
 	}
-
-	int vBufferSize2 = vList2.size() * sizeof(Vertex);
-	ID3D12Resource* vBufferUploadHeap2;
-
-	//create the default buffer for the vertex data and upload the data using an upload buffer.
-	vertexBuffer2 = CreateDefaultBuffer(device, commandList, &vList2[0], vBufferSize2, vBufferUploadHeap2);
-
-	////transition the vertex buffer data from copy destination state to vertex buffer state
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(vertexBuffer2, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
-
-	//create index buffer
-	std::vector <DWORD> iList2;
-	for (int i = 0; i < mesh2->_indices.size(); i++) {
-		iList2.push_back(mesh2->_indices[i]);
-	}
-
-	int iBufferSize2 = sizeof(DWORD) * iList2.size();
-
-	numCubeIndices2 = iList2.size(); //the number of indeces we want to draw (size of the (iList)/(size of one float3) i think)
-
-	ID3D12Resource* iBufferUploadHeap2;
-	indexBuffer2 = CreateDefaultBuffer(device, commandList, &iList2[0], iBufferSize2, iBufferUploadHeap2);
-
-	//transition index buffer data from copy to index buffer state
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(indexBuffer2, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
 
 	//create a depth stencil descriptor heap so we can get a pointer to the depth stencil buffer
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
@@ -685,26 +680,6 @@ bool InitD3D() {
 
 	//we are done with the image data. it's uploaded to the gpu now. we can free up the (ram) memory
 	delete imageData;
-
-	//create a vertex buffer view for the triangle. we get the gpu memory address to the vertex pointer using the GetGPUVirtualAddress() method
-	vertexBufferView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
-	vertexBufferView.StrideInBytes = sizeof(Vertex);
-	vertexBufferView.SizeInBytes = vBufferSize;
-
-	//create a index buffer view for the triangle. gets the gpu memory address to the pointer.
-	indexBufferView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
-	indexBufferView.Format = DXGI_FORMAT_R32_UINT;
-	indexBufferView.SizeInBytes = iBufferSize;
-
-	//create a vertex buffer view for the triangle. we get the gpu memory address to the vertex pointer using the GetGPUVirtualAddress() method
-	vertexBufferView2.BufferLocation = vertexBuffer2->GetGPUVirtualAddress();
-	vertexBufferView2.StrideInBytes = sizeof(Vertex);
-	vertexBufferView2.SizeInBytes = vBufferSize2;
-
-	//create a index buffer view for the triangle. gets the gpu memory address to the pointer.
-	indexBufferView2.BufferLocation = indexBuffer2->GetGPUVirtualAddress();
-	indexBufferView2.Format = DXGI_FORMAT_R32_UINT;
-	indexBufferView2.SizeInBytes = iBufferSize2;
 
 	//setup viewport and scene objects //
 	{

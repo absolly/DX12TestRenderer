@@ -9,7 +9,7 @@ using namespace std;
 
 Mesh::Mesh(string pId)
 	: _id(pId), _indexBufferId(0), _vertexBufferId(0), _normalBufferId(0), _uvBufferId(0), _tangentBufferId(0), _bitangentBufferId(0),
-	_vertices(), _normals(), _uvs(), _indices(), _tangents(), _bitangents() {
+	_vertices(), _indices(), _vertexData() {
 	//ctor
 }
 
@@ -120,6 +120,9 @@ Mesh* Mesh::load(string pFileName, bool pDoBuffer) {
 			else if (strcmp(cmd, "vt") == 0) {
 				XMFLOAT2 uv;
 				sscanf(line.c_str(), "%10s %f %f ", cmd, &uv.x, &uv.y);
+
+				//TODO this is a fix for the convertion from opengl to directX, might be a better solution for this
+				uv.y = 1 - uv.y;
 				uvs.push_back(uv);
 
 				//this is where it gets nasty. After having read all vertices, normals and uvs into
@@ -223,11 +226,12 @@ Mesh* Mesh::load(string pFileName, bool pDoBuffer) {
 							//and store the corresponding vertex/normal/uv values into our own buffers
 							//note the -1 is required since all values in the f triplets in the .obj file
 							//are 1 based, but our vectors are 0 based
+							mesh->_vertexData.push_back(Vertex(vertices[vindex - 1], uvs[uIndex - 1], normals[nIndex - 1], tangent, bitangent));
 							mesh->_vertices.push_back(vertices[vindex - 1]);
-							mesh->_normals.push_back(normals[nIndex - 1]);
-							mesh->_tangents.push_back(tangent);
-							mesh->_bitangents.push_back(bitangent);
-							mesh->_uvs.push_back(uvs[uIndex - 1]);
+							//mesh->_normals.push_back(normals[nIndex - 1]);
+							//mesh->_tangents.push_back(tangent);
+							//mesh->_bitangents.push_back(bitangent);
+							//mesh->_uvs.push_back(uvs[uIndex - 1]);
 						}
 						else {
 							//if the key was already present, get the index value for it
@@ -263,31 +267,39 @@ Mesh* Mesh::load(string pFileName, bool pDoBuffer) {
 }
 
 void Mesh::_buffer() {
-	/*glGenBuffers(1, &_indexBufferId);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBufferId);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, _indices.size() * sizeof(unsigned int), &_indices[0], GL_STATIC_DRAW);
+	//std::vector<Vertex> vList = _vertexData;
 
-	glGenBuffers(1, &_vertexBufferId);
-	glBindBuffer(GL_ARRAY_BUFFER, _vertexBufferId);
-	glBufferData(GL_ARRAY_BUFFER, _vertices.size() * sizeof(glm::vec3), &_vertices[0], GL_STATIC_DRAW);
+	//int vBufferSize = vList.size() * sizeof(Vertex);
+	//ID3D12Resource* vBufferUploadHeap;
 
-	glGenBuffers(1, &_normalBufferId);
-	glBindBuffer(GL_ARRAY_BUFFER, _normalBufferId);
-	glBufferData(GL_ARRAY_BUFFER, _normals.size() * sizeof(glm::vec3), &_normals[0], GL_STATIC_DRAW);
+	////create the default buffer for the vertex data and upload the data using an upload buffer.
+	//vertexBuffer = CreateDefaultBuffer(device, commandList, &vList[0], vBufferSize, vBufferUploadHeap);
 
-	glGenBuffers(1, &_tangentBufferId);
-	glBindBuffer(GL_ARRAY_BUFFER, _tangentBufferId);
-	glBufferData(GL_ARRAY_BUFFER, _tangents.size() * sizeof(glm::vec3), &_tangents[0], GL_STATIC_DRAW);
+	//////transition the vertex buffer data from copy destination state to vertex buffer state
+	//commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(vertexBuffer, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
 
-	glGenBuffers(1, &_bitangentBufferId);
-	glBindBuffer(GL_ARRAY_BUFFER, _bitangentBufferId);
-	glBufferData(GL_ARRAY_BUFFER, _bitangents.size() * sizeof(glm::vec3), &_bitangents[0], GL_STATIC_DRAW);
+	////create index buffer
+	//std::vector <DWORD> iList = mesh->_indices;
 
-	glGenBuffers(1, &_uvBufferId);
-	glBindBuffer(GL_ARRAY_BUFFER, _uvBufferId);
-	glBufferData(GL_ARRAY_BUFFER, _uvs.size() * sizeof(glm::vec2), &_uvs[0], GL_STATIC_DRAW);
+	//int iBufferSize = sizeof(DWORD) * iList.size();
 
-	glBindBuffer(GL_ARRAY_BUFFER, 0);*/
+	//numCubeIndices = iList.size(); //the number of indeces we want to draw (size of the (iList)/(size of one float3) i think)
+
+	//ID3D12Resource* iBufferUploadHeap;
+	//indexBuffer = CreateDefaultBuffer(device, commandList, &iList[0], iBufferSize, iBufferUploadHeap);
+
+	////transition index buffer data from copy to index buffer state
+	//commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(indexBuffer, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
+
+	////create a vertex buffer view for the triangle. we get the gpu memory address to the vertex pointer using the GetGPUVirtualAddress() method
+	//vertexBufferView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
+	//vertexBufferView.StrideInBytes = sizeof(Vertex);
+	//vertexBufferView.SizeInBytes = vBufferSize;
+
+	////create a index buffer view for the triangle. gets the gpu memory address to the pointer.
+	//indexBufferView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
+	//indexBufferView.Format = DXGI_FORMAT_R32_UINT;
+	//indexBufferView.SizeInBytes = iBufferSize;
 }
 
 void Mesh::streamToOpenGL(int pVerticesAttrib, int pNormalsAttrib, int pUVsAttrib, int pTangentAttrib, int pBitangentAttrib) {
@@ -438,7 +450,7 @@ std::vector<XMFLOAT3>* Mesh::getVerticies()
 	return &_vertices;
 }
 
-std::vector<unsigned>* Mesh::getVertextIndices()
+std::vector<DWORD>* Mesh::getVertextIndices()
 {
 	return &_indices;
 }
