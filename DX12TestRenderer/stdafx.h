@@ -11,39 +11,13 @@
 #include <DirectXMath.h>
 #include "d3dx12.h"
 #include <string>
-#include <wincodec.h>
 #include <iostream>
+#include "Mesh.h"
+#include "TextureMaterial.h"
+#include "Debug.h"
 
 // this will only call release if an object exists (prevents exceptions calling release on non existant objects)
 #define SAFE_RELEASE(p) { if ( (p) ) { (p)->Release(); (p) = 0; } }
-#ifndef ThrowIfFailed
-#define ThrowIfFailed(x)                                              \
-{                                                                     \
-    HRESULT hr__ = (x);                                               \
-    std::wstring wfn = AnsiToWString(__FILE__);                       \
-    if(FAILED(hr__)) { throw DxException(hr__, L#x, wfn, __LINE__); } \
-}
-#endif
-
-inline std::wstring AnsiToWString(const std::string& str)
-{
-	WCHAR buffer[512];
-	MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, buffer, 512);
-	return std::wstring(buffer);
-}
-class DxException
-{
-public:
-	DxException() = default;
-	DxException(HRESULT hr, const std::wstring& functionName, const std::wstring& filename, int lineNumber);
-
-	std::wstring ToString()const;
-
-	HRESULT ErrorCode = S_OK;
-	std::wstring FunctionName;
-	std::wstring Filename;
-	int LineNumber = -1;
-};
 
 using namespace DirectX; // we will be using the directxmath library
 
@@ -98,49 +72,30 @@ int frameIndex; //current rtv
 
 int rtvDescriptorSize; //size of the rtv descriptor on the device (all front and back buffers will be the same size)
 
-// drawing objects stuff //
-ID3D12PipelineState* pipelineStateObject; //pso containing a pipeline state (in this case the vertex data for 1 object)
+ID3D12Resource* constantBufferUploadHeaps[frameBufferCount]; //this is the memory where the constant buffer will be placed TODO
 
-ID3D12RootSignature* rootSignature; //root signature defines data shaders will access
+UINT8* cbvGPUAddress[frameBufferCount]; // pointers to the memory locations we get when we map the constant buffers
+										//constant buffers must be 256 byte aligned
+struct ConstantBufferPerObject {
+	XMFLOAT4X4 wvpMat;
+};
+int ConstantBufferPerObjectAlignedSize = (sizeof(ConstantBufferPerObject) + 255) & ~255;
+
+ConstantBufferPerObject cbPerObject;
 
 D3D12_VIEWPORT viewport; //area that the rasterizer will be streched to.
 
 D3D12_RECT scissorRect; //the area of the window that can be drawn in. pixels outside the area will not be drawn
 
-ID3D12Resource* vertexBuffer; //a default buffer in gpu memory that we will load the vertex data into
-
-D3D12_VERTEX_BUFFER_VIEW vertexBufferView; //a structure containing a pointer to the vertex data in gpu memory (to be used by the driver), 
-										   //the total size of the buffer, and the size of each element
-
-ID3D12Resource* indexBuffer; //a default buffer in gpu memory that we will load index data into
-
-D3D12_INDEX_BUFFER_VIEW indexBufferView; //a stucture holding info about the index buffer
-
-ID3D12Resource* vertexBuffer2; //a default buffer in gpu memory that we will load the vertex data into
-
-D3D12_VERTEX_BUFFER_VIEW vertexBufferView2; //a structure containing a pointer to the vertex data in gpu memory (to be used by the driver), 
-										   //the total size of the buffer, and the size of each element
-
-ID3D12Resource* indexBuffer2; //a default buffer in gpu memory that we will load index data into
-
-D3D12_INDEX_BUFFER_VIEW indexBufferView2; //a stucture holding info about the index buffer
-
 ID3D12Resource* depthStencilBuffer; //the memory for out depth buffer, will also be used for the stencil buffer later on
 
 ID3D12DescriptorHeap* dsDescriptorHeap; //this is a heap fo the depth/stencil descriptor
 
-struct ConstantBufferPerObject {
-	XMFLOAT4X4 wvpMat;
-};
+Mesh* diveScooterMesh;
+Mesh* mantaMesh;
 
-//constant buffers must be 256 byte aligned
-int ConstantBufferPerObjectAlignedSize = (sizeof(ConstantBufferPerObject) + 255) & ~255;
-
-ConstantBufferPerObject cbPerObject;
-
-ID3D12Resource* constantBufferUploadHeaps[frameBufferCount]; //this is the memory where the constant buffer will be placed
-
-UINT8* cbvGPUAddress[frameBufferCount]; // pointers to the memory locations we get when we map the constant buffers
+TextureMaterial* mat1;
+TextureMaterial* mat2;
 
 XMFLOAT4X4 cameraProjMat; //store the projection matrix
 XMFLOAT4X4 cameraViewMat; //store the view matrix
@@ -149,31 +104,14 @@ XMFLOAT4 cameraPosition; //store the camera position vector
 XMFLOAT4 cameraTarget; //camera look at point
 XMFLOAT4 cameraUp; //world up vector
 
+
 XMFLOAT4X4 cube1WorldMat; //first cubes world matrix
 XMFLOAT4X4 cube1RotMat; //keep track of the first cubes rotation
 XMFLOAT4 cube1Position; //first cubes position
 
-XMFLOAT4X4 cube2WorldMat; //second cubes world matrix
-XMFLOAT4X4 cube2RotMat; //keep track of the second cubes rotation
-XMFLOAT4 cube2PositionOffset; //second cube will rotate around the first cube. this is the position offset from the first cube
-
-int numCubeIndices; //the number of indices to draw the cube
-int numCubeIndices2; //the number of indices to draw the cube
-
-ID3D12Resource* textureBuffer; //the resource heap containing our texture
-ID3D12Resource* textureBuffer2; //the resource heap containing our texture
-
-
-ID3D12DescriptorHeap* mainDescriptorHeap;
-
-ID3D12DescriptorHeap* secondaryDescriptorHeap;
-
-ID3D12Resource* textureBufferUploadHeap;
-
-ID3D12Resource* textureBufferUploadHeap2;
-
-BYTE* imageData;
-BYTE* imageData2;
+XMFLOAT4X4 cube2WorldMat; //first cubes world matrix
+XMFLOAT4X4 cube2RotMat; //keep track of the first cubes rotation
+XMFLOAT4 cube2PositionOffset; //first cubes position
 
 /// functions
 
@@ -192,7 +130,7 @@ bool InitD3D();
 //update the game logic
 void Update();
 
-//update teh direct3d pipeline (update the command list)
+//update the direct3d pipeline (update the command list)
 void UpdatePipeline();
 
 //execute the command list
@@ -203,35 +141,6 @@ void Cleanup();
 
 //wait until gpu is finished with the command list
 void WaitForPreviousFrame();
-
-//load and decode image from file
-int LoadImageDataFromFile(BYTE** imageData, D3D12_RESOURCE_DESC& resourceDescription, LPCWSTR filename, int &bytesPerRow);
-
-//get DXGI format from the WIC format GUID
-DXGI_FORMAT GetDXGIFormatFromWICFormat(WICPixelFormatGUID& wicFormatGUID);
-
-//converted format for dxgi unknown format
-WICPixelFormatGUID GetConvertToWICFormat(WICPixelFormatGUID& wicFormatGUID);
-
-//get the bit depth
-int GetDXGIFormatBitsPerPixel(DXGI_FORMAT& dxgiFormat);
-
-//upload data to constant buffer
-static ID3D12Resource* CreateDefaultBuffer(
-	ID3D12Device* device,
-	ID3D12GraphicsCommandList* cmdList,
-	const void* initData,
-	UINT64 byteSize,
-	ID3D12Resource*& uploadBuffer
-);
-static ID3D12Resource* CreateTextureDefaultBuffer(
-	ID3D12Device* device,
-	ID3D12GraphicsCommandList* cmdList,
-	const void* initData,
-	int bytesPerRow,
-	D3D12_RESOURCE_DESC& textureDesc,
-	ID3D12Resource*& uploadBuffer
-);
 
 template <class C>
 std::size_t countof(C const & c)

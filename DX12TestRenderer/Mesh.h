@@ -12,6 +12,7 @@
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <D3Dcompiler.h>
+#include "Debug.h"
 
 using namespace DirectX; // we will be using the directxmath library
 
@@ -37,7 +38,7 @@ class World;
 class Mesh
 {
 	public:
-		Mesh(std::string pId);
+		Mesh(std::string pId, ID3D12Device* pDevice, ID3D12GraphicsCommandList* pCommandList);
 		virtual ~Mesh();
 
         /**
@@ -45,7 +46,7 @@ class Mesh
          * vertexes, uvs, normals and face indexes. See load source
          * for more format information.
          */
-		static Mesh* load(std::string pFileName, bool pDoBuffer = true);
+		static Mesh* load(std::string pFileName, ID3D12Device* pDevice, ID3D12GraphicsCommandList* pCommandList, bool pDoBuffer = true);
 		//void _sendDataToOpenGL(glm::mat4 pProjectionMatrix, glm::mat4 pViewMatrix, std::vector<GameObject*> pGameObjects);
 
         /**
@@ -55,7 +56,9 @@ class Mesh
 
 		void instanceToOpenGL(int pVerticesAttrib, int pNormalsAttrib, int pUVsAttrib, int pTangentAttrib, int pBitangentAttrib);
 
-		void drawInstancedmesh();
+		void SetVertexIndexBuffers();
+
+		void Draw();
 
 		void DisableVertexAttribArrays();
 
@@ -77,6 +80,8 @@ class Mesh
 	protected:
 
 	    std::string _id;
+		ID3D12Device* device;
+		ID3D12GraphicsCommandList* commandList;
 
         //OpenGL id's for the different buffers created for this mesh
 		unsigned int _indexBufferId;
@@ -90,8 +95,16 @@ class Mesh
 		unsigned int _normalattr;
 		unsigned int _verticesattrb;
 
-		ID3D12Resource* vertexBuffer;
+		int numIndices;
 
+		ID3D12Resource* vertexBuffer; //a default buffer in gpu memory that we will load the vertex data into
+
+		D3D12_VERTEX_BUFFER_VIEW vertexBufferView; //a structure containing a pointer to the vertex data in gpu memory (to be used by the driver), 
+												   //the total size of the buffer, and the size of each element
+
+		ID3D12Resource* indexBuffer; //a default buffer in gpu memory that we will load index data into
+
+		D3D12_INDEX_BUFFER_VIEW indexBufferView; //a stucture holding info about the index buffer
 
         //buffer vertices, normals, and uv's
 		void _buffer();
@@ -119,6 +132,15 @@ class Mesh
 					return memcmp((void*)this, (void*)&other, sizeof(FaceIndexTriplet))>0;
 				}
 		};
+
+		//upload data to constant buffer
+		static ID3D12Resource* CreateDefaultBuffer(
+			ID3D12Device* device,
+			ID3D12GraphicsCommandList* cmdList,
+			const void* initData,
+			UINT64 byteSize,
+			ID3D12Resource*& uploadBuffer
+		);
 
 };
 

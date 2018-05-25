@@ -143,12 +143,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="d3dx12.h" />
-    <ClInclude Include="Mesh.hpp" />
+    <ClInclude Include="Debug.h" />
+    <ClInclude Include="GameObject.h" />
+    <ClInclude Include="Mesh.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="TextureMaterial.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="GameObject.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="TextureMaterial.cpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="PixelShader.hlsl">
