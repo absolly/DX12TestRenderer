@@ -212,7 +212,7 @@ Mesh* Mesh::load(string pFileName, ID3D12Device* pDevice, ID3D12GraphicsCommandL
 
 						}
 						//create key out of the triplet and check if we already encountered this before
-						FaceIndexTriplet triplet(vindex, vindex, nIndex);
+						FaceIndexTriplet triplet(vindex, uIndex, nIndex);
 						map<FaceIndexTriplet, unsigned int>::iterator found = mappedTriplets.find(triplet);
 
 						//if iterator points at the end, we haven't found it
