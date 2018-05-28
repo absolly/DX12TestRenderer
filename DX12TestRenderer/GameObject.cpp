@@ -2,7 +2,7 @@
 
 
 
-GameObject::GameObject(ID3D12Device* pDevice, ID3D12GraphicsCommandList* pCommandList, std::string pName) : device(pDevice), commandList(pCommandList)
+GameObject::GameObject(std::string pName)
 {
 
 }
