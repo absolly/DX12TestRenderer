@@ -67,7 +67,7 @@ class Mesh
          */
         void drawDebugInfo(const XMFLOAT4X4& pModelMatrix, const XMFLOAT4X4& pViewMatrix, const XMFLOAT4X4& pProjectionMatrix);
 
-		std::vector<XMFLOAT3>* getVerticies();
+		std::vector<XMFLOAT3>*  getVerticies();
 		std::vector<DWORD>* getVertextIndices();
 
 		//the actual data

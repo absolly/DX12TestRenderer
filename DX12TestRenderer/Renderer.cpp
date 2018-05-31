@@ -1,4 +1,5 @@
 #include "Renderer.h"
+
 ID3D12Device* Renderer::device = nullptr;
 ID3D12GraphicsCommandList*  Renderer::commandList = nullptr;
 
@@ -347,13 +348,14 @@ bool Renderer::InitD3D() {
 	//create a constant buffer resource heap
 	//unlike the other upload buffers this one is not temporary
 	//since the data in this buffer will likely be updated every frame there is no point in copying the data to a default heap
-	go1 = new GameObject("");
+	go1 = new GameObject("", vec3(0,0,0));
 	go1->SetMesh(diveScooterMesh);
 	go1->SetMaterial(mat1);
 
-	go2 = new GameObject("");
-	go1->SetMesh(mantaMesh);
-	go1->SetMaterial(mat2);
+	go2 = new GameObject("", vec3(1.5f, 0, 0));
+	go2->scale(vec3(0.02f));
+	go2->SetMesh(mantaMesh);
+	go2->SetMaterial(mat2);
 
 	//create a resource heap, descriptor heap, and pointer to cbv for every framebuffer
 	for (int i = 0; i < frameBufferCount; i++)
@@ -381,10 +383,11 @@ bool Renderer::InitD3D() {
 		//map the resource heap to get a gpu virtual address to the beginning of the heap
 		hr = constantBufferUploadHeaps[i]->Map(0, &readRange, reinterpret_cast<void**>(&cbvGPUAddress[i]));
 
-		//because of the constant read alignment requirements, constant buffer views must be 256 bit aligned. since our buffers are smaller than 256 bits
-		//we just need to add the spacing between the two buffers, so the second buffer starts 256 bits from the beginning of the heap
-		memcpy(cbvGPUAddress[i], &cbPerObject, sizeof(cbPerObject)); //cube1's constant buffer data
-		memcpy(cbvGPUAddress[i] + ConstantBufferPerObjectAlignedSize, &cbPerObject, sizeof(cbPerObject)); //cube2's constant buffer data
+		//because of the constant read alignment requirements, constant buffer views must be 256 byte aligned. since our buffers are smaller than 256 bits
+		//we just need to add the spacing between the two buffers, so the second buffer starts 256 byte from the beginning of the heap
+		//
+		//memcpy(cbvGPUAddress[i], &cbPerObject, sizeof(cbPerObject)); //cube1's constant buffer data
+		//memcpy(cbvGPUAddress[i] + ConstantBufferPerObjectAlignedSize, &cbPerObject, sizeof(cbPerObject)); //cube2's constant buffer data
 	}
 
 	//new we execute the command list and upload the initial assets (triangle data)
@@ -420,37 +423,18 @@ bool Renderer::InitD3D() {
 		scissorRect.bottom = Height;
 
 		//build projection and view matrix
-		XMMATRIX tmpMat = XMMatrixPerspectiveFovLH(45.0f*(3.14f / 180.0f), (float)Width / (float)Height, 0.1f, 1000.0f);
-		XMStoreFloat4x4(&cameraProjMat, tmpMat);
+		cameraProjMat = glm::perspectiveLH(glm::radians(45.0f), 16.0f / 9.0f, 0.1f, 1000.0f);
+
 
 		//set starting camera state
-		cameraPosition = XMFLOAT4(0.0f, 2.0f, -4.0f, 0.0f);
-		cameraTarget = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
-		cameraUp = XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f);
+		camPos = glm::vec3(0, 2, -4);
+		camTarget = glm::vec3(0);
+		camUp = glm::vec3(0, 1, 0);
 
 		//build view matrix
-		XMVECTOR cPos = XMLoadFloat4(&cameraPosition);
-		XMVECTOR cTarg = XMLoadFloat4(&cameraTarget);
-		XMVECTOR cUp = XMLoadFloat4(&cameraUp);
-		tmpMat = XMMatrixLookAtLH(cPos, cTarg, cUp);
-		XMStoreFloat4x4(&cameraViewMat, tmpMat);
+		cameraViewMat = glm::lookAtLH(camPos, camTarget, camUp);
 
-		//set cube starting positions
-		//first cube
-		go1->Position = XMFLOAT4(0, 0, 0, 0);
-		XMVECTOR posVec = XMLoadFloat4(&go1->Position);
 
-		tmpMat = XMMatrixTranslationFromVector(posVec); //create translation matrix from cube1's position vector
-		XMStoreFloat4x4(&go1->RotMat, XMMatrixIdentity()); //initialize cube1's rotation matrix to identity matrix
-		XMStoreFloat4x4(&go1->WorldMat, tmpMat); //store world matrix
-
-												 //second cube
-		go2->Position = XMFLOAT4(1.5f, 0, 0, 0);
-		posVec = XMLoadFloat4(&go2->Position) + XMLoadFloat4(&go1->Position); //we are rotating cube 2 around cube one so add positions
-
-		tmpMat = XMMatrixTranslationFromVector(posVec); //create translation matrix from cube2's position offset vector
-		XMStoreFloat4x4(&go2->RotMat, XMMatrixIdentity()); //initialize cube2's rotation matrix to identity matrix
-		XMStoreFloat4x4(&go2->WorldMat, tmpMat); //store world matrix
 	}
 
 	return true;
@@ -459,67 +443,22 @@ bool Renderer::InitD3D() {
 void Renderer::Update() {
 	//update app logic
 
-	//create rotation matrices (you wouldn't normally do this every frame but alright)
-	XMMATRIX rotXMat = XMMatrixRotationX(0.0001f);
-	XMMATRIX rotYMat = XMMatrixRotationY(0.0002f);
-	XMMATRIX rotZMat = XMMatrixRotationZ(0.0003f);
-
-	//add rotation to cube1's rotation matrix and store it
-	XMMATRIX rotMat = XMLoadFloat4x4(&go1->RotMat) * rotXMat * rotYMat * rotZMat;
-	XMStoreFloat4x4(&go1->RotMat, rotMat);
-
-	//create translatiom matrix for cube1 from position vector
-	XMMATRIX translationMat = XMMatrixTranslationFromVector(XMLoadFloat4(&go1->Position));
-
-	//create cube1's world matrix by rotating and then positioning the rotated cube
-	XMMATRIX worldMat = rotMat * translationMat;
-
-	//store cube1's world matrix
-	XMStoreFloat4x4(&go1->WorldMat, worldMat);
-
 	// update constant buffer for cube1
 	// create the wvp matrix and store in constant buffer
-	XMMATRIX viewMat = XMLoadFloat4x4(&cameraViewMat); // load view matrix
-	XMMATRIX projMat = XMLoadFloat4x4(&cameraProjMat); // load projection matrix
-	XMMATRIX wvpMat = XMLoadFloat4x4(&go1->WorldMat) * viewMat * projMat; // create wvp matrix
-	XMMATRIX transposed = XMMatrixTranspose(wvpMat); // must transpose wvp matrix for the gpu
-	XMStoreFloat4x4(&cbPerObject.wvpMat, transposed); // store transposed wvp matrix in constant buffer
+	go1->SetTransform(glm::rotate(go1->GetTransform(), .0001f, glm::vec3(1, 2, 3)));
 
+	glm::mat4 cb = glm::transpose(cameraProjMat * (cameraViewMat) * go1->GetTransform());
 													  // copy our ConstantBuffer instance to the mapped constant buffer resource
-	memcpy(cbvGPUAddress[frameIndex], &cbPerObject, sizeof(cbPerObject));
+	memcpy(cbvGPUAddress[frameIndex] + ConstantBufferPerObjectAlignedSize * go1->_constantBufferID, &cb, sizeof(cb));
 
 	// now do cube2's world matrix
 	// create rotation matrices for cube2
-	rotXMat = XMMatrixRotationX(0.0003f);
-	rotYMat = XMMatrixRotationY(0.0002f);
-	rotZMat = XMMatrixRotationZ(0.0001f);
+	go2->SetTransform(glm::rotate(go2->GetTransform(), .0001f, glm::vec3(3, 2, 1)));
 
-	// add rotation to cube2's rotation matrix and store it
-	rotMat = rotZMat * (XMLoadFloat4x4(&go2->RotMat) * (rotXMat * rotYMat));
-	XMStoreFloat4x4(&go2->RotMat, rotMat);
-
-	// create translation matrix for cube 2 to offset it from cube 1 (its position relative to cube1
-	XMMATRIX translationOffsetMat = XMMatrixTranslationFromVector(XMLoadFloat4(&go2->Position));
-
-	// we want cube 2 to be half the size of cube 1, so we scale it by .5 in all dimensions
-	XMMATRIX scaleMat = XMMatrixScaling(0.02f, 0.02f, 0.02f);
-
-	// reuse worldMat. 
-	// first we scale cube2. scaling happens relative to point 0,0,0, so you will almost always want to scale first
-	// then we translate it. 
-	// then we rotate it. rotation always rotates around point 0,0,0
-	// finally we move it to cube 1's position, which will cause it to rotate around cube 1
-	worldMat = scaleMat * translationOffsetMat * rotMat * translationMat;
-
-	wvpMat = XMLoadFloat4x4(&go2->WorldMat) * viewMat * projMat; // create wvp matrix
-	transposed = XMMatrixTranspose(wvpMat); // must transpose wvp matrix for the gpu
-	XMStoreFloat4x4(&cbPerObject.wvpMat, transposed); // store transposed wvp matrix in constant buffer
+	cb = glm::transpose(cameraProjMat * (cameraViewMat) * go1->GetTransform() * go2->GetTransform());
 
 	// copy our ConstantBuffer instance to the mapped constant buffer resource
-	memcpy(cbvGPUAddress[frameIndex] + ConstantBufferPerObjectAlignedSize, &cbPerObject, sizeof(cbPerObject));
-
-	// store cube2's world matrix
-	XMStoreFloat4x4(&go2->WorldMat, worldMat);
+	memcpy(cbvGPUAddress[frameIndex] + ConstantBufferPerObjectAlignedSize * go2->_constantBufferID, &cb, sizeof(cb));
 }
 
 void Renderer::UpdatePipeline() {
@@ -568,13 +507,13 @@ void Renderer::UpdatePipeline() {
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	//first cube
-	mat1->Render(diveScooterMesh, constantBufferUploadHeaps[frameIndex]->GetGPUVirtualAddress());
+	mat1->Render(diveScooterMesh, constantBufferUploadHeaps[frameIndex]->GetGPUVirtualAddress() + ConstantBufferPerObjectAlignedSize * go1->_constantBufferID);
 
 	//second cube
 
 	//set cube2's constant buffer. we add the size of the ConstantBufferPerObject (256 bits) to the constatn buffer address.
 	//this is because cube2's constant buffer data is stored after the first one(256 bits from the start of the heap)	
-	mat2->Render(mantaMesh, constantBufferUploadHeaps[frameIndex]->GetGPUVirtualAddress() + ConstantBufferPerObjectAlignedSize);
+	mat2->Render(mantaMesh, constantBufferUploadHeaps[frameIndex]->GetGPUVirtualAddress() + ConstantBufferPerObjectAlignedSize * go2->_constantBufferID);
 
 	//transition the 'frameIndex' render target from the render target state to the present state.
 	//if the debug layer is enabled you will receive an error if present is called on a render target that is not in present state

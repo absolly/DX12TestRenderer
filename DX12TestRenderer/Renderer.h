@@ -16,6 +16,7 @@
 #include "TextureMaterial.h"
 #include "Debug.h"
 #include "GameObject.h"
+#include "glm.h"
 
 // this will only call release if an object exists (prevents exceptions calling release on non existant objects)
 #define SAFE_RELEASE(p) { if ( (p) ) { (p)->Release(); (p) = 0; } }
@@ -83,7 +84,7 @@ public:
 	UINT8* cbvGPUAddress[frameBufferCount]; // pointers to the memory locations we get when we map the constant buffers
 											//constant buffers must be 256 byte aligned
 	struct ConstantBufferPerObject {
-		XMFLOAT4X4 wvpMat;
+		mat4 wvpMat;
 	};
 	int ConstantBufferPerObjectAlignedSize = (sizeof(ConstantBufferPerObject) + 255) & ~255;
 
@@ -106,13 +107,12 @@ public:
 	GameObject* go1;
 	GameObject* go2;
 
-	XMFLOAT4X4 cameraProjMat; //store the projection matrix
-	XMFLOAT4X4 cameraViewMat; //store the view matrix
+	glm::mat4 cameraProjMat;
+	glm::mat4 cameraViewMat;
 
-	XMFLOAT4 cameraPosition; //store the camera position vector
-	XMFLOAT4 cameraTarget; //camera look at point
-	XMFLOAT4 cameraUp; //world up vector
-
+	glm::vec3 camPos;
+	glm::vec3 camTarget;
+	glm::vec3 camUp;
 								  /// functions
 
 								  //create the window
