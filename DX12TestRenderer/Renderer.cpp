@@ -423,8 +423,7 @@ bool Renderer::InitD3D() {
 		scissorRect.bottom = Height;
 
 		//build projection and view matrix
-		cameraProjMat = glm::perspectiveLH(glm::radians(45.0f), 16.0f / 9.0f, 0.1f, 1000.0f);
-
+		cameraProjMat = glm::perspective(glm::radians(45.0f), 16.0f / 9.0f, 0.1f, 1000.0f);
 
 		//set starting camera state
 		camPos = glm::vec3(0, 2, -4);
@@ -432,7 +431,7 @@ bool Renderer::InitD3D() {
 		camUp = glm::vec3(0, 1, 0);
 
 		//build view matrix
-		cameraViewMat = glm::lookAtLH(camPos, camTarget, camUp);
+		cameraViewMat = glm::lookAt(camPos, camTarget, camUp);
 
 
 	}
@@ -447,15 +446,14 @@ void Renderer::Update() {
 	// create the wvp matrix and store in constant buffer
 	go1->SetTransform(glm::rotate(go1->GetTransform(), .0001f, glm::vec3(1, 2, 3)));
 
-	glm::mat4 cb = glm::transpose(cameraProjMat * (cameraViewMat) * go1->GetTransform());
+	glm::mat4 cb = glm::transpose(cameraProjMat * cameraViewMat * go1->GetTransform());
 													  // copy our ConstantBuffer instance to the mapped constant buffer resource
 	memcpy(cbvGPUAddress[frameIndex] + ConstantBufferPerObjectAlignedSize * go1->_constantBufferID, &cb, sizeof(cb));
 
 	// now do cube2's world matrix
 	// create rotation matrices for cube2
 	go2->SetTransform(glm::rotate(go2->GetTransform(), .0001f, glm::vec3(3, 2, 1)));
-
-	cb = glm::transpose(cameraProjMat * (cameraViewMat) * go1->GetTransform() * go2->GetTransform());
+	cb = glm::transpose(cameraProjMat * cameraViewMat * go1->GetTransform() * go2->GetTransform());
 
 	// copy our ConstantBuffer instance to the mapped constant buffer resource
 	memcpy(cbvGPUAddress[frameIndex] + ConstantBufferPerObjectAlignedSize * go2->_constantBufferID, &cb, sizeof(cb));

@@ -2,7 +2,7 @@
 
 int GameObject::_gameobjects = 0;
 
-GameObject::GameObject(std::string pName, vec3 pPosition) : _transform(translate(pPosition)), _constantBufferID(_gameobjects)
+GameObject::GameObject(std::string pName, vec3 pPosition) : _transform(glm::translate(glm::mat4(1), pPosition)), _constantBufferID(_gameobjects)
 {
 	_gameobjects++;
 }
